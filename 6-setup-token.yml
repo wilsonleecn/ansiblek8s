@@ -1,0 +1,20 @@
+- hosts: 'master'
+  become: yes
+  gather_facts: false
+  vars_files:
+    - serverConf.yml
+  tasks:
+    - name: create account
+      shell: |
+        kubectl create serviceaccount {{accountName}} -n kube-system
+        kubectl create clusterrolebinding {{accountName}} --clusterrole=cluster-admin --serviceaccount=kube-system:{{accountName}}
+
+    - name: create account token
+      shell: kubectl create token {{accountName}} -n kube-system --duration=480h
+      register: token
+
+    - debug: msg="{{token.stdout}}"
+    
+    # remove account
+    # kubectl -n kubernetes-dashboard delete serviceaccount {{accountName}}
+    # kubectl -n kubernetes-dashboard delete clusterrolebinding {{accountName}}

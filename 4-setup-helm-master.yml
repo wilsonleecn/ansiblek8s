@@ -1,0 +1,69 @@
+- hosts: master
+  #  collections:
+  #    - community.kubernetes
+  become: yes
+  gather_facts: false
+  vars_files:
+    - serverConf.yml
+  tasks:
+    - name: Download Helm
+      get_url:
+        url: "{{ helm_url }}"
+        dest: /tmp/helm.tar.gz
+
+    - name: Install Helm
+      shell: |
+        tar -zxvf /tmp/helm.tar.gz -C /tmp
+        mv /tmp/linux-amd64/helm /usr/local/bin/helm
+        chmod +x /usr/local/bin/helm
+      args:
+        executable: /bin/bash
+
+    - name: Add helm repo https://charts.helm.sh/stable
+      shell: helm repo add stable https://charts.helm.sh/stable
+
+    - name: helm repo update
+      shell: helm repo update
+
+    - name: install kubernetes dashboard
+      # helm install 1kubernetes-dashboard 2kubernetes-dashboard/3kubernetes-dashboard
+      # 1. chart instance name, 2. repo name 3. template name
+      shell: |
+        helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+        helm install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard -n kube-system  --set=rbac.clusterAdminRole=true --version {{ kubernetes_dashboard_chart_version }}  
+      ignore_errors: yes
+
+    #    Add args below, if deployment status red
+    #- --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+    #- --kubelet-insecure-tls
+    - name: install metrics server
+      shell: |
+        helm repo add bitnami https://charts.bitnami.com/bitnami
+        helm install metrics-server bitnami/metrics-server -n kube-system --version {{ metrics_server_chart_version }}
+      ignore_errors: yes
+
+    - name: install ingress-nginx
+      shell: |
+        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+        helm repo update
+        helm install ingress-nginx ingress-nginx/ingress-nginx -n kube-system --set=controller.kind=DaemonSet --set=controller.hostNetwork=true --set=controller.enableTLSPassthrough=true --version {{ ingress_nginx_version }}
+      ignore_errors: yes
+
+    - name: install nfs-provisioner
+      shell: |
+        helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+        helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner  --set nfs.server={{ hostvars[groups['master'] | first].ansible_host }} --set nfs.path={{ nfs_server_path }} --set storageClass.onDelete=true -n kube-system
+      ignore_errors: yes
+
+    - name: install prometheus-stack
+      shell: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        kubectl create ns monitoring
+        helm install prometheus prometheus-community/kube-prometheus-stack -n monitoring --version {{ prometheus_stack_version }}
+      ignore_errors: yes
+
+    - name: install cert-manager
+      shell: |
+        helm repo add jetstack https://charts.jetstack.io
+        helm install cert-manager -n kube-system jetstack/cert-manager --version {{ cert_manager_version }} --set installCRDs=true
+      ignore_errors: yes

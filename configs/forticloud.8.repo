@@ -1,0 +1,117 @@
+##### Dev
+
+[dev_rh8_baseos]
+name=dev_rh8_baseos
+baseurl=http://172.16.208.211/rhel-8-for-x86_64-baseos-rpms/
+enabled=0
+gpgcheck=0
+
+[dev_rh8_appstream]
+name=dev_rh8_appstream
+baseurl=http://172.16.208.211/rhel-8-for-x86_64-appstream-rpms/
+enabled=0
+gpgcheck=0
+
+##### Global
+
+[global_rh8_baseos]
+name = global_rh8_baseos
+baseurl = https://10.20.98.100/rhel-8-for-x86_64-baseos-rpms/rhel-8-for-x86_64-baseos-rpms/
+async = 1
+enabled = 0
+gpgcheck = 0
+priority = 2
+sslverify = 0
+
+[global_rh8_appstream]
+name = global_rh8_appstream
+baseurl = https://10.20.98.100/rhel-8-for-x86_64-appstream-rpms/rhel-8-for-x86_64-appstream-rpms/
+async = 1
+enabled = 0
+gpgcheck = 0
+priority = 2
+sslverify = 0
+
+[global_rh8_epel]
+name = global_rh8_epel
+baseurl = https://10.20.98.100/rhel-8-epel/epel/
+async = 1
+enabled = 0
+gpgcheck = 0
+sslverify = 0
+
+[global_rh8_epel_modular]
+name = global_rh8_epel_modular
+baseurl = https://10.20.98.100/rhel-8-epel/epel-modular/
+async = 1
+enabled = 0
+gpgcheck = 0
+sslverify = 0
+
+##### EU
+
+[eu_rh8_baseos]
+name = eu_rh8_baseos
+baseurl = https://10.20.1.100/rhel-8-for-x86_64-baseos-rpms/rhel-8-for-x86_64-baseos-rpms/
+enabled = 0
+gpgcheck = 0
+priority = 2
+sslverify = 0
+
+[eu_rh8_appstream]
+name = eu_rh8_appstream
+baseurl = https://10.20.1.100/rhel-8-for-x86_64-appstream-rpms/rhel-8-for-x86_64-appstream-rpms/
+enabled = 0
+gpgcheck = 0
+priority = 2
+sslverify = 0
+
+[eu_rh8_epel]
+name = eu_rh8_epel
+baseurl = https://10.20.1.100/rhel-8-epel/epel/
+enabled = 0
+gpgcheck = 0
+sslverify = 0
+
+[eu_rh8_epel_modular]
+name = eu_rh8_epel_modular
+baseurl = https://10.20.1.100/rhel-8-epel/epel-modular/
+enabled = 0
+gpgcheck = 0
+sslverify = 0
+
+##### JP
+
+[jp_rh8_baseos]
+name = jp_rh8_baseos
+baseurl = https://10.31.48.100/rhel-8-for-x86_64-baseos-rpms/rhel-8-for-x86_64-baseos-rpms/
+enabled = 0
+async = 1
+gpgcheck = 0
+priority = 2
+sslverify = 0
+
+[jp_rh8_appstream]
+name = jp_rh8_appstream
+baseurl = https://10.31.48.100/rhel-8-for-x86_64-appstream-rpms/rhel-8-for-x86_64-appstream-rpms/
+enabled = 0
+async = 1
+gpgcheck = 0
+priority = 2
+sslverify = 0
+
+[jp_rh8_epel]
+name = jp_rh8_epel
+baseurl = https://10.31.48.100/rhel-8-epel/epel/
+enabled = 0
+async = 1
+gpgcheck = 0
+sslverify = 0
+
+[jp_rh8_epel_modular]
+name = jp_rh8_epel_modular
+baseurl = https://10.31.48.100/rhel-8-epel/epel-modular/
+enabled = 0
+async = 1
+gpgcheck = 0
+sslverify = 0

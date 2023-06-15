@@ -1,0 +1,187 @@
+- hosts: 'all'
+  become: yes
+  vars_files:
+    - serverConf.yml
+
+  # refer: https://www.linuxtechi.com/how-to-install-kubernetes-cluster-rhel/
+  tasks:
+    # disable SWAP
+    - name: Disable SWAP temporarily (1/2)
+      shell: |
+        swapoff -a
+    - name: Disable SWAP permanently in /etc/fstab (2/2)
+      replace:
+        path: /etc/fstab
+        regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+        replace: '# \1'
+    
+    # disable SELinux
+    - name: Disable SELinux temporarily (1/2)
+      command: setenforce 0
+      ignore_errors: yes
+
+    - name: Disable SELinux permanently in /etc/selinux/config (2/2)
+      ansible.posix.selinux:
+        state: disabled
+      ignore_errors: yes
+    
+    # setup /etc/hosts
+    - name: Update the /etc/hosts file with node name
+      tags: etchostsupdate
+      become: yes
+      become_user: root
+      lineinfile:
+        path: "/etc/hosts"
+        regexp: ".*\t{{ hostvars[item]['ansible_hostname']}}\t{{ hostvars[item]['ansible_hostname']}}"
+        line: "{{ hostvars[item]['ansible_env'].SSH_CONNECTION.split(' ')[2] }}\t{{ hostvars[item]['ansible_hostname']}}\t{{ hostvars[item]['ansible_hostname']}}"
+        state: present
+        backup: yes
+      register: etchostsupdate
+      when: ansible_hostname != "{{ item }}" or ansible_hostname == "{{ item }}"
+      with_items: "{{groups['all']}}"
+
+    # # Install -y iproute-tc
+    # - name: Install iproute-tc
+    #   ansible.builtin.dnf:
+    #     name: iproute-tc
+    #     state: latest
+
+    # Disable and stop firewalld
+    - name: Disable and Stop firewalld
+      service:
+        name: firewalld
+        state: stopped
+        enabled: false
+      ignore_errors: yes
+      
+    # Remove old cni if exists
+    - name: ip link set cni0 down
+      shell: ip link set cni0 down
+      ignore_errors: yes
+
+    - name: ip link delete cni0
+      shell: ip link delete cni0
+      ignore_errors: yes
+
+    - name: ip link delete flannel.1
+      shell: ip link delete flannel.1
+      ignore_errors: yes
+
+    - name: Ensure net.bridge.bridge-nf-call-ip6tables is set to 1
+      sysctl:
+        name: net.bridge.bridge-nf-call-ip6tables
+        value: 1
+        state: present
+
+    - name: Ensure net.bridge.bridge-nf-call-iptables is set to 1
+      sysctl:
+        name: net.bridge.bridge-nf-call-iptables
+        value: 1
+        state: present
+    
+    # Prepare yum repo
+    - name: Remove Fortinet repository files
+      file:
+        path: /etc/yum.repos.d/fortinet.repo
+        state: absent
+
+    - name: Remove old rhel8 repository files rhel8-server-appstream.repo
+      file:
+        path: "/etc/yum.repos.d/rhel8-server-appstream.repo"
+        state: absent
+
+    - name: Remove old rhel8 repository files
+      file:
+        path: "/etc/yum.repos.d/rhel8-base.repo"
+        state: absent
+    
+    - name: Copy file to target
+      copy:
+        src: ./configs/forticloud.8.repo
+        dest: /etc/yum.repos.d/
+    
+    - name: Enable dev rhel8 yum Repository dev_rh8_baseos
+      shell: yum-config-manager --enable dev_rh8_baseos 
+
+    - name: Enable dev rhel8 yum Repository dev_rh8_appstream
+      shell: yum-config-manager --enable dev_rh8_appstream
+
+    - name: Add Kubernetes' YUM repository
+      yum_repository:
+        name: Kubernetes
+        description: Kubernetes YUM repository
+        baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+        gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+        gpgcheck: no
+
+    - name: Add Docker repository using yum_repository module
+      shell: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+    # Install all required software
+    - name: Install containerd
+      package:
+        name: containerd.io-{{ containerd_version }}
+        state: present
+
+    - name: Install kubectl, kubelet, kubeadm
+      package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - kubectl-{{ k8s_version }}
+        - kubelet-{{ k8s_version }}
+        - kubeadm-{{ k8s_version }}
+    
+    - name: Install iproute-tc, used by "kubeadm init"
+      package:
+        name: "iproute-tc"
+        state: present
+
+    - name: Config to use containerd instead of dockershim
+      shell: crictl config --set runtime-endpoint=unix:///run/containerd/containerd.sock --set image-endpoint=unix:///run/containerd/containerd.sock
+
+    - name: Enable and start containerd
+      service:
+        name: containerd
+        state: restarted
+        enabled: yes
+
+    - name: Enable and start kubectl
+      service:
+        name: kubelet
+        state: restarted
+        enabled: yes
+
+# Setup nfs server on master
+- hosts: master
+  become: yes
+  gather_facts: false
+  tasks:
+    - name: Create /data/k8s folder with 755 mode
+      file:
+        path: /data/k8s
+        state: directory
+        mode: 0755
+
+    - name: set folder export
+      ansible.builtin.lineinfile:
+        path: /etc/exports
+        line: '/data/k8s    *(rw,sync,no_root_squash)'
+        insertafter: EOF
+    
+    - name: Install nfs
+      package:
+        name: "nfs-utils"
+        state: present
+
+    - name: Enable and start rpcbind
+      service:
+        name: rpcbind
+        state: restarted
+        enabled: yes
+        
+    - name: Enable and start nfs-server
+      service:
+        name: nfs-server
+        state: restarted
+        enabled: yes

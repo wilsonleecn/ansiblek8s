@@ -1,0 +1,11 @@
+---
+- name: Example Playbook
+  hosts: master
+  gather_facts: false
+  vars_files:
+    - serverConf.yml
+
+  tasks:
+    - name: Task using external variables
+      debug:
+        var: k8HostName

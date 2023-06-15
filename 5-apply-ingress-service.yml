@@ -1,0 +1,14 @@
+- hosts: 'master'
+  become: yes
+  gather_facts: false
+  vars_files:
+    - serverConf.yml
+  tasks:
+
+    - name: copy configs/ingress.yml to master VM
+      template:
+        src: ./configs/ingress.yaml
+        dest: /tmp/
+
+    - name: apply ingress service
+      shell: kubectl apply -f /tmp/ingress.yaml
